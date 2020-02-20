@@ -149,21 +149,6 @@ int main(void) {
     
   }
 
-//  for (int row = 0; row < filterImg.rows; row++) {
-//    for (int col = 0; col < filterImg.cols; col++) {
-//      uint8_t locPix = filterImg.at<uint8_t>(row, col);
-//      //could be moved into loop upwards, could save time
-//      cv::Vec3b locPix3;
-//      if (locPix == noData || locPix == toSegmentData) {
-//        locPix3 = cv::Vec3b(locPix, locPix, locPix);
-//      } else {
-//        locPix3 = colors[(locPix - 1) % colorsSize];
-//      }
-//
-//      filterColorImg.at<cv::Vec3b>(row, col) = locPix3;
-//    }
-//  }
-  
   printf("Found segments: %d\n", foundObjects);
   
   cv::imshow("TrainImage", srcImg);
