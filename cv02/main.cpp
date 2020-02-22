@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "colors.h"
+#include "cli.h"
 
 
 /**
@@ -12,11 +14,6 @@ constexpr uint8_t noData = 0;
 constexpr uint8_t toSegmentData = 255;
 uint16_t foundObjects = 0;
 std::vector<cv::Point> toSegmentIndexes;
-
-
-// List of 20 Simple, Distinct Colors
-// https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
-
 
 
 class Object {
@@ -154,100 +151,124 @@ void checkPoint(const cv::Point &point, cv::Mat_<uint8_t> &filterImg, int16_t cu
   }
 }
 
+void printUsage() {
+  std::cout << "Image Segmentation" << std::endl;
+  std::cout << "Usage: [-f input]" << std::endl;
+}
 
-int main(void) {
+int main(int argc, char **argv) {
   
-  /**
-   * Load image.
-   */
-  const cv::Mat_<uint8_t> srcImg = cv::imread("./images/train.png", cv::IMREAD_GRAYSCALE);
-  cv::Mat_<uint8_t> filterImg = srcImg.clone();
-  cv::Mat_<cv::Vec3b> filterColorImg(filterImg.rows, filterImg.cols);
-  cv::Mat_<cv::Vec3b> classificationColorImg(filterImg.rows, filterImg.cols);
-  
-  
-  for (int row = 0; row < filterImg.rows; row++) {
-    for (int col = 0; col < filterImg.cols; col++) {
-      uint8_t loc_pix = filterImg.at<uint8_t>(row, col);
-      
-      // Background for segmented image
-      filterColorImg.at<cv::Vec3b>(row, col) = cv::Vec3b(noData, noData, noData);
-      classificationColorImg.at<cv::Vec3b>(row, col) = cv::Vec3b(255, 255, 255);
-      
-      if (loc_pix < threshold) {
-        loc_pix = noData;
-      } else {
-        toSegmentIndexes.emplace_back(col, row);
-        loc_pix = toSegmentData;
-      }
-      filterImg.at<uint8_t>(row, col) = loc_pix;
+  if (argc == 1) {
+    printUsage();
+    return 1;
+  }
+  std::string inputImagePath = "";
+  try {
+    ArgParser args(argc, argv);
+    while (args.hasNext()) {
+      std::string opt = args.getNextOpt();
+      if (opt == "f") {
+        inputImagePath = args.getNextValue();
+      } else if (opt == "h" || opt == "help") {
+        printUsage();
+        return 1;
+      } else
+        throw std::invalid_argument("invalid argument");
     }
-  }
-  
-  for (const cv::Point &point : toSegmentIndexes) {
-    checkPoint(point, filterImg);
-  }
-  
-  for (Object *obj : objects) {
-    //Recompute perimeter
-    obj->computePerimeter(filterImg);
     
-    printf("%s\n", obj->toString().c_str());
-    for (const cv::Point &point : obj->indexes_) {
-      uint8_t locPix = filterImg.at<uint8_t>(point);
-      cv::Vec3b locPix3;
-      if (locPix == noData || locPix == toSegmentData) {
-        locPix3 = cv::Vec3b(locPix, locPix, locPix);
-      } else {
-        locPix3 = colors[(locPix - 1) % colorsSize];
-      }
-      filterColorImg.at<cv::Vec3b>(point) = locPix3;
-      for (const cv::Point &perimeterPoint : obj->perimeterPoints_) {
+    const cv::Mat_<uint8_t> srcImg = cv::imread(inputImagePath, cv::IMREAD_GRAYSCALE);
+    cv::Mat_<uint8_t> filterImg = srcImg.clone();
+    cv::Mat_<cv::Vec3b> filterColorImg(filterImg.rows, filterImg.cols);
+    cv::Mat_<cv::Vec3b> classificationColorImg(filterImg.rows, filterImg.cols);
+    
+    
+    for (int row = 0; row < filterImg.rows; row++) {
+      for (int col = 0; col < filterImg.cols; col++) {
+        uint8_t loc_pix = filterImg.at<uint8_t>(row, col);
         
-        classificationColorImg.at<cv::Vec3b>(perimeterPoint) = obj->color_;
+        // Background for segmented image
+        filterColorImg.at<cv::Vec3b>(row, col) = cv::Vec3b(noData, noData, noData);
+        classificationColorImg.at<cv::Vec3b>(row, col) = cv::Vec3b(255, 255, 255);
+        
+        if (loc_pix < threshold) {
+          loc_pix = noData;
+        } else {
+          toSegmentIndexes.emplace_back(col, row);
+          loc_pix = toSegmentData;
+        }
+        filterImg.at<uint8_t>(row, col) = loc_pix;
+      }
+    }
+    
+    for (const cv::Point &point : toSegmentIndexes) {
+      checkPoint(point, filterImg);
+    }
+    
+    for (Object *obj : objects) {
+      //Recompute perimeter
+      obj->computePerimeter(filterImg);
+      
+      printf("%s\n", obj->toString().c_str());
+      for (const cv::Point &point : obj->indexes_) {
+        uint8_t locPix = filterImg.at<uint8_t>(point);
+        cv::Vec3b locPix3;
+        if (locPix == noData || locPix == toSegmentData) {
+          locPix3 = cv::Vec3b(locPix, locPix, locPix);
+        } else {
+          locPix3 = colors[(locPix - 1) % colorsSize];
+        }
+        filterColorImg.at<cv::Vec3b>(point) = locPix3;
+        for (const cv::Point &perimeterPoint : obj->perimeterPoints_) {
+          
+          classificationColorImg.at<cv::Vec3b>(perimeterPoint) = obj->color_;
+        }
+        
+        classificationColorImg.at<cv::Vec3b>(obj->getCenterOfMass()) = obj->color_;
+        
+        cv::putText(classificationColorImg,
+                    std::to_string(obj->index_),
+                    cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y - 10), // Coordinates
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+                    0.5, // Scale. 2.0 = 2x bigger
+                    cv::Scalar(0, 0, 0), // BGR Color
+                    1); // Line Thickness (Optional)
+        
+        cv::putText(classificationColorImg,
+                    std::to_string(obj->getArea()),
+                    cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y), // Coordinates
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+                    0.5, // Scale. 2.0 = 2x bigger
+                    cv::Scalar(0, 0, 0), // BGR Color
+                    1); // Line Thickness (Optional)
+        
+        cv::putText(classificationColorImg,
+                    std::to_string(obj->getPerimeter()),
+                    cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y + 10), // Coordinates
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+                    0.5, // Scale. 2.0 = 2x bigger
+                    cv::Scalar(0, 0, 0), // BGR Color
+                    1); // Line Thickness (Optional)
+        
       }
       
-      classificationColorImg.at<cv::Vec3b>(obj->getCenterOfMass()) = obj->color_;
-      
-      cv::putText(classificationColorImg,
-                  std::to_string(obj->index_),
-                  cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y - 10), // Coordinates
-                  cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-                  0.5, // Scale. 2.0 = 2x bigger
-                  cv::Scalar(0, 0, 0), // BGR Color
-                  1); // Line Thickness (Optional)
-      
-      cv::putText(classificationColorImg,
-                  std::to_string(obj->getArea()),
-                  cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y), // Coordinates
-                  cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-                  0.5, // Scale. 2.0 = 2x bigger
-                  cv::Scalar(0, 0, 0), // BGR Color
-                  1); // Line Thickness (Optional)
-      
-      cv::putText(classificationColorImg,
-                  std::to_string(obj->getPerimeter()),
-                  cv::Point(obj->getCenterOfMass().x + 10, obj->getCenterOfMass().y + 10), // Coordinates
-                  cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-                  0.5, // Scale. 2.0 = 2x bigger
-                  cv::Scalar(0, 0, 0), // BGR Color
-                  1); // Line Thickness (Optional)
       
     }
     
+    printf("Found segments: %d\n", foundObjects);
     
+    cv::imshow("TrainImage", srcImg);
+    cv::imshow("FilterColorImage", filterColorImg);
+    cv::imshow("ClassificationColorImage", classificationColorImg);
+    
+    for (Object *obj : objects) {
+      delete obj;
+      obj = nullptr;
+    }
+    
+    cv::waitKey();
   }
-  
-  printf("Found segments: %d\n", foundObjects);
-  
-  cv::imshow("TrainImage", srcImg);
-  cv::imshow("FilterColorImage", filterColorImg);
-  cv::imshow("ClassificationColorImage", classificationColorImg);
-  
-  for (Object *obj : objects) {
-    delete obj;
-    obj = nullptr;
+  catch (std::exception &e) {
+    std::cout << "Error: " << e.what() << std::endl;
+    return 1;
   }
-  
-  cv::waitKey();
 }
