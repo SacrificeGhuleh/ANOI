@@ -22,6 +22,10 @@
 #include <opencv2/highgui.hpp>    //cv::imshow, cv::waitKey
 #include <opencv2/imgproc.hpp>    //cv::imshow, cv::waitKey
 
+template<class T>
+inline T SQR(T val) {
+  return val * val;
+}
 
 
 #endif //PCH_H
