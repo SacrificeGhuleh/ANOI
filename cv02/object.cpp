@@ -27,19 +27,6 @@ cv::Point Object::getCenterOfMass() const {
   return centerOfMass_;
 }
 
-unsigned int Object::computeCircumference() {
-  circumference_ = 0;
-  cv::Point centerOfMass = getCenterOfMass();
-  for (const cv::Point &point : indexes_) {
-    circumference_ = std::max<unsigned int>(std::abs(point.x - centerOfMass.x), circumference_);
-    circumference_ = std::max<unsigned int>(std::abs(point.y - centerOfMass.y), circumference_);
-  }
-  return circumference_;
-}
-
-unsigned int Object::getCircumference() const {
-  return circumference_;
-}
 
 std::string Object::toString() const {
   std::stringstream stringStream;
@@ -48,7 +35,6 @@ std::string Object::toString() const {
                "  color: " << (int) color_[0] << " " << (int) color_[1] << " " << (int) color_[2] << "\n" <<
                "  area: " << getArea() << "\n" <<
                "  center of mass [" << centerOfMass_.x << "," << centerOfMass_.y << "]\n" <<
-               "  circumference: " << circumference_ << "\n" <<
                "  perimeter: " << perimeter_ << "\n" <<
                "  feature one: " << featureOne_ << "\n" <<
                "  feature two: " << featureTwo_ << "\n";
@@ -92,7 +78,6 @@ unsigned int Object::getPerimeter() const {
 void Object::recomputeTraits() {
   computePerimeter();
   computeCenterOfMass();
-  computeCircumference();
   computeFeatureOne();
   computeFeatureTwo();
 }
@@ -116,7 +101,7 @@ double Object::computeMomentToCenter(int p, int q) const {
 }
 
 double Object::computeFeatureOne() {
-  featureOne_ = (circumference_ * circumference_) / (100. * getArea());
+  featureOne_ = (perimeter_ * perimeter_) / (100. * getArea());
   return featureOne_;
 }
 
@@ -128,7 +113,7 @@ double Object::computeFeatureTwo() {
   
   double maxCenterMoment = 0.5 * (mi20 + mi02) + 0.5 * sqrt(4 * SQR(mi11) + SQR(mi20 - mi02));
   double minCenterMoment = 0.5 * (mi20 + mi02) - 0.5 * sqrt(4 * SQR(mi11) + SQR(mi20 - mi02));
-  featureTwo_ = maxCenterMoment / minCenterMoment;
+  featureTwo_ = minCenterMoment / maxCenterMoment;
   return featureTwo_;
 }
 

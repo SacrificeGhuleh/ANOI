@@ -18,9 +18,6 @@ public:
   
   cv::Point getCenterOfMass() const;
   
-  unsigned int computeCircumference();
-  unsigned int getCircumference() const;
-  
   std::string toString() const;
   
   void computePerimeter();
@@ -48,7 +45,6 @@ public:
   std::vector<cv::Point> perimeterPoints_;
   cv::Mat_<uint8_t> *filterImg_;
   cv::Vec3b color_;
-  unsigned int circumference_;
 };
 
 
