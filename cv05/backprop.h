@@ -1,15 +1,15 @@
 #pragma once
 
 struct NN {
-  int *n; // pocty neuronu
-  int l; // pocet vrstev
-  double ***w; // vahy
+  int *n; //! @brief pocty neuronu
+  int l; //! @brief pocet vrstev
+  double ***w; //! @brief vahy
   
-  double *in; // vstupni vektor
-  double *out; // vystupni vektor
-  double **y; // vystupni vektory vrstev
+  double *in; //! @brief vstupni vektor
+  double *out; //! @brief vystupni vektor
+  double **y; //! @brief vystupni vektory vrstev
   
-  double **d; // chyby neuronu
+  double **d; //! @brief chyby neuronu
 };
 
 NN *createNN(int n, int h, int o);

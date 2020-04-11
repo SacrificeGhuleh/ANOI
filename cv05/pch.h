@@ -14,6 +14,15 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
+#include <vector>
+#include <random>
+
+
 
 //opencv headers
 //#include <opencv2/opencv.hpp>   //General cv header

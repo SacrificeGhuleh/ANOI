@@ -1,24 +1,25 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <math.h>
-#include <string.h>
-#include <vector>
+#include "pch.h"
 #include "backprop.h"
+#include "utils.h"
 
 #define LAMBDA 1.0
 #define ETA 0.1
 
-#define SQR(x) ( ( x ) * ( x ) )
-
 void randomize(double *p, int n) {
   for (int i = 0; i < n; i++) {
-    p[i] = (double) rand() / (RAND_MAX);
+    p[i] = random(0, 1);
   }
 }
 
+/**
+ * @brief Creates neural network
+ * @param n Number of input layer neurons
+ * @param h Number of hidden layer neurons
+ * @param o Number of output layer neurons
+ * @return Ptr to created neural network
+ * @warning Do not forget to destroy neural network at the end of the program. --> releaseNN
+ */
 NN *createNN(int n, int h, int o) {
-  srand(time(NULL));
   NN *nn = new NN;
   
   nn->n = new int[3];
@@ -59,6 +60,7 @@ NN *createNN(int n, int h, int o) {
   return nn;
 }
 
+
 void releaseNN(NN *&nn) {
   for (int k = 0; k < nn->l - 1; k++) {
     for (int j = 0; j < nn->n[k + 1]; j++) {
@@ -82,17 +84,66 @@ void releaseNN(NN *&nn) {
   delete[] nn->n;
   
   delete nn;
-  nn = NULL;
+  nn = nullptr;
 }
 
 void feedforward(NN *nn) {
-  //TODO
+  for (int k = 1; k < nn->l; k++) {
+    for (int i = 0; i < nn->n[k]; i++) {
+      double weight = 0.0;
+      for (int j = 0; j < nn->n[k - 1]; j++) {
+        weight += nn->w[k - 1][i][j] * nn->y[k - 1][j];
+      }
+      double res = 1.0 / (1.0 + exp(-LAMBDA * weight));
+      nn->y[k][i] = res;
+    }
+  }
 }
 
 double backpropagation(NN *nn, double *t) {
-  double error = 0.0;
+  //For each layer
+  for (int k = nn->l - 1; k >= 0; k--) {
+    //If output layer
+    if (k == nn->l - 1) {
+      //For each neuron
+      for (int i = 0; i < nn->n[k]; i++) {
+        double delta = nn->y[k][i] * (1 - nn->y[k][i]);
+        float error = t[i] - nn->y[k][i];
+        
+        nn->d[k][i] = error * LAMBDA * delta;
+      }
+      // Else if hidden layer
+    } else if (k != 0) {
+      //For each neuron
+      for (int i = 0; i < nn->n[k]; i++) {
+        double errorResult = 0.0;
+        //Neurons from upper layer
+        for (int j = 0; j < nn->n[k + 1]; j++) {
+          errorResult += nn->d[k + 1][j] * nn->w[k][j][i];
+        }
+        nn->d[k][i] = errorResult * LAMBDA * (nn->y[k][i] * (1 - nn->y[k][i]));
+      }
+    }
+  }
   
-  //TODO
+  //update weights
+  //layers
+  for (int k = 0; k < nn->l - 1; k++) {
+    //upper layer
+    for (int i = 0; i < nn->n[k + 1]; i++) {
+      //lower layer
+      for (int j = 0; j < nn->n[k]; j++) {
+        nn->w[k][i][j] = nn->w[k][i][j] + ETA * nn->d[k + 1][i] * nn->y[k][j];
+      }
+    }
+  }
+  
+  //compute error
+  double error = 0.0;
+  for (int n = 0; n < nn->n[nn->l - 1]; n++) {
+    error += SQR(t[n] - nn->y[nn->l - 1][n]);
+  }
+  error /= 2.0;
   
   return error;
 }
